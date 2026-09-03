@@ -43,76 +43,62 @@ function scoreResult(result: Omit<ScanResult, "score" | "conviction" | "signals"
   let score = 0;
   const signals: string[] = [];
 
-  // Funding Rate scoring
-  if (result.fundingRate > 0.001) {
-    score += 1;
-    signals.push(`Funding Rate: ${(result.fundingRate * 100).toFixed(4)}% (Elevated)`);
-  }
-  if (result.fundingRate > 0.003) {
-    score += 1;
-    signals.push("Funding Rate: Очень висок (>0.3%)");
-  }
-  if (result.fundingRate > 0.005) {
-    score += 1;
-    signals.push("Funding Rate: ЕКСТРЕМНО ВИСОК (>0.5%) 🔥");
-  }
-
-  // OI Change scoring
-  if (result.openInterestChange > 5) {
-    score += 1;
-    signals.push(`OI промяна: +${result.openInterestChange.toFixed(1)}% (Нарастване)`);
-  }
-  if (result.openInterestChange > 15) {
-    score += 1;
-    signals.push("OI промяна: РЯЗЪК СКОК >15% 🔥");
-  }
-
-  // OI Spike detection
-  if (result.oiSpike) {
-    score += 2;
-    signals.push("OI Spike: Рязко нарастване на Open Interest ⚡");
-  }
-
-  // RSI Divergence
-  if (result.rsiDivergence) {
-    score += 2;
-    signals.push("RSI Bearish Дивергенция: Нов ценови връх при по-нисък RSI 📉");
-  }
-
-  // RSI overbought
-  if (result.rsiValue !== null && result.rsiValue > 70) {
-    score += 1;
-    signals.push(`RSI Пренакупен: ${result.rsiValue.toFixed(1)} (>70)`);
-  }
-  if (result.rsiValue !== null && result.rsiValue > 80) {
-    score += 1;
-    signals.push(`RSI Екстремно: ${result.rsiValue.toFixed(1)} (>80) 🔥`);
-  }
-
-  // Liquidity Sweep
+  // 1. Primary Market Action (High Conviction Signals)
   if (result.liquiditySweep) {
     score += 3;
-    signals.push("Liquidity Sweep: Пробив над равни върхове + затваряне обратно ⚡");
+    signals.push("Liquidity Sweep: Пробив над равен връх + затваряне под него ⚡");
   }
 
-  // Market Structure Break
-  if (result.marketStructureBreak) {
+  if (result.fundingRate > 0.0003) {
     score += 2;
-    signals.push("MSB: Пробив на Higher Low структура 🔻");
+    signals.push(`Funding Rate: +${(result.fundingRate * 100).toFixed(3)}% (Скъп Long)`);
+  }
+  if (result.fundingRate > 0.0008) {
+    score += 1;
+    signals.push("Funding Rate: ЕКСТРЕМНО ВЕЛИК (>0.08%) 🔥");
   }
 
-  // CVD Divergence
   if (result.cvdDivergence) {
     score += 2;
-    signals.push("CVD Дивергенция: Цена нагоре, обем купувачи надолу 📊");
+    signals.push("CVD Дивергенция: Ценови нов връх при спадащ Spot CVD 📊");
   }
 
-  return { score, signals };
+  if (result.oiSpike) {
+    score += 2;
+    signals.push("OI Spike & Stall: Рязък скок на OI + спиране на импулса ⚡");
+  } else if (result.openInterestChange > 8) {
+    score += 1;
+    signals.push(`OI Промяна: +${result.openInterestChange.toFixed(1)}%`);
+  }
+
+  // 2. Technical Structure Confirmations
+  if (result.marketStructureBreak) {
+    score += 1.5;
+    signals.push("MSB: Пробив на 15m/1h Higher Low подкрепа 🔻");
+  }
+
+  if (result.rsiDivergence) {
+    score += 1.5;
+    signals.push("RSI Bearish Дивергенция: Нов връх на цената при по-нисък RSI 📉");
+  }
+
+  if (result.rsiValue !== null && result.rsiValue > 75) {
+    score += 1;
+    signals.push(`RSI Пренакупен: ${result.rsiValue.toFixed(1)}`);
+  }
+
+  // 3. Synergistic Combination Bonus (High Precision Short Setup)
+  if (result.liquiditySweep && result.cvdDivergence) {
+    score += 1.5;
+    signals.push("COMBO: Liquidity Sweep + CVD Divergence 🔥");
+  }
+
+  return { score: Math.round(score * 10) / 10, signals };
 }
 
 function calcTradeLevels(
   price: number,
-  klines: Array<{ high: string; low: string }>,
+  klines: Array<{ high: string; low: string; close: string }>,
   hasSweep: boolean
 ): { entryPrice: number; stopLoss: number; takeProfit: number } {
   const highs = klines.slice(-20).map((k) => parseFloat(k.high));
@@ -120,42 +106,55 @@ function calcTradeLevels(
   const maxHigh = Math.max(...highs);
   const minLow = Math.min(...lows);
 
-  // Entry at current price
+  // Approximate ATR(14) for volatility buffer
+  let trSum = 0;
+  const recent = klines.slice(-15);
+  for (let i = 1; i < recent.length; i++) {
+    const h = parseFloat(recent[i].high);
+    const l = parseFloat(recent[i].low);
+    const prevC = parseFloat(recent[i - 1].close);
+    const tr = Math.max(h - l, Math.abs(h - prevC), Math.abs(l - prevC));
+    trSum += tr;
+  }
+  const atr = trSum / (recent.length - 1 || 1);
+
   const entryPrice = price;
 
-  // Stop loss: above the sweep / recent high (0.3% buffer)
-  const stopLoss = hasSweep ? maxHigh * 1.003 : price * 1.015;
+  // Stop Loss: Above Liquidity Sweep high with ATR buffer (minimum 0.8%)
+  const rawSL = hasSweep ? maxHigh + atr * 0.5 : price + atr * 1.5;
+  const stopLoss = Math.max(rawSL, price * 1.008);
 
-  // Take profit: next liquidity level below (nearest significant low)
-  const sortedLows = [...lows].sort((a, b) => b - a);
-  const midLow = sortedLows[Math.floor(sortedLows.length / 2)];
-  const takeProfit = Math.max(minLow, midLow * 0.995);
+  // Take Profit: Targeting lowest pool of liquidity with R:R >= 1:2.5
+  const risk = stopLoss - entryPrice;
+  const minTarget = entryPrice - risk * 2.5;
+  const takeProfit = Math.min(minLow, minTarget);
 
-  return { entryPrice, stopLoss, takeProfit };
+  return {
+    entryPrice: Number(entryPrice.toFixed(6)),
+    stopLoss: Number(stopLoss.toFixed(6)),
+    takeProfit: Number(takeProfit.toFixed(6)),
+  };
 }
 
 export async function runScan(topN = 100): Promise<ScanResult[]> {
-  // Fetch all tickers and premium index in parallel
   const [tickers, premiumIndexes] = await Promise.all([
     getAllTickers(),
     getAllPremiumIndex(),
   ]);
 
-  if (tickers.length === 0) return [];
+  if (!tickers || tickers.length === 0) return [];
 
-  // Sort by volume and take top N
   const topTickers = tickers
     .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
     .slice(0, topN);
 
-  // Build funding rate map
   const fundingMap = new Map<string, number>();
   for (const p of premiumIndexes) {
     fundingMap.set(p.symbol, parseFloat(p.lastFundingRate));
   }
 
   const results: ScanResult[] = [];
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 20;
 
   for (let i = 0; i < topTickers.length; i += BATCH_SIZE) {
     const batch = topTickers.slice(i, i + BATCH_SIZE);
@@ -170,7 +169,6 @@ export async function runScan(topN = 100): Promise<ScanResult[]> {
 
           const fundingRate = fundingMap.get(symbol) ?? 0;
 
-          // Fetch OI and klines in parallel
           const [oiData, oiHist, klines1h, klines4h] = await Promise.all([
             getOpenInterest(symbol),
             getOpenInterestHist(symbol, "1h", 5),
@@ -180,7 +178,6 @@ export async function runScan(topN = 100): Promise<ScanResult[]> {
 
           const openInterest = oiData ? parseFloat(oiData.openInterest) : 0;
 
-          // OI change %
           let openInterestChange = 0;
           if (oiHist.length >= 2) {
             const latest = parseFloat(oiHist[oiHist.length - 1].sumOpenInterest);
@@ -190,14 +187,12 @@ export async function runScan(topN = 100): Promise<ScanResult[]> {
             }
           }
 
-          // Technical indicators
           const rsiDivergence = detectBearishDivergence(klines4h.length >= 30 ? klines4h : klines1h);
           const liquiditySweep = detectLiquiditySweep(klines1h);
           const marketStructureBreak = detectMarketStructureBreak(klines1h);
           const cvdDivergence = detectCVDDivergence(klines1h);
           const oiSpike = detectOISpike(oiHist);
 
-          // RSI value (last)
           let rsiValue: number | null = null;
           if (klines4h.length >= 15) {
             const closes = klines4h.map((k) => parseFloat(k.close));
@@ -254,6 +249,5 @@ export async function runScan(topN = 100): Promise<ScanResult[]> {
     }
   }
 
-  // Sort by score descending
   return results.sort((a, b) => b.score - a.score);
 }
