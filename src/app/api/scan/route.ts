@@ -1,3 +1,4 @@
+export const maxDuration = 60;
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { scanResults, scanHistory, alerts } from "@/db/schema";
