@@ -1583,6 +1583,25 @@ function fmtPrice(n) {
     if (n >= 1) return n.toFixed(3);
     return n.toFixed(5);
 }
+function formatDate(dateStr) {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const timeStr = d.toLocaleTimeString("bg-BG", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    });
+    if (isToday) {
+        return `Днес, ${timeStr} ч.`;
+    }
+    const dateFormatted = d.toLocaleDateString("bg-BG", {
+        day: "2-digit",
+        month: "short"
+    });
+    return `${dateFormatted}, ${timeStr} ч.`;
+}
 function AlertsPanel() {
     _s();
     const [alerts, setAlerts] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
@@ -1599,6 +1618,19 @@ function AlertsPanel() {
             }
         }
     }["AlertsPanel.useCallback[fetchAlerts]"], []);
+    const handleClearAll = async ()=>{
+        if (!confirm("Сигурни ли сте, че искате да изтриете всички известия?")) return;
+        try {
+            const res = await fetch("/api/alerts", {
+                method: "DELETE"
+            });
+            if (res.ok) {
+                setAlerts([]);
+            }
+        } catch (err) {
+            console.error("Failed to clear alerts", err);
+        }
+    };
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AlertsPanel.useEffect": ()=>{
             fetchAlerts();
@@ -1610,24 +1642,8 @@ function AlertsPanel() {
     }["AlertsPanel.useEffect"], [
         fetchAlerts
     ]);
-    const markRead = async (id)=>{
-        await fetch("/api/alerts", {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                id
-            })
-        });
-        setAlerts((prev)=>prev.map((a)=>a.id === id ? {
-                    ...a,
-                    isRead: true
-                } : a));
-    };
-    const unreadCount = alerts.filter((a)=>!a.isRead).length;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "bg-[#131929] border border-[#1e2d47] rounded-xl p-4",
+        className: "bg-[#121722] rounded-xl border border-gray-800 p-4 flex flex-col h-full",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex items-center justify-between mb-4",
@@ -1640,305 +1656,282 @@ function AlertsPanel() {
                                 children: "🔔"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                lineNumber: 63,
+                                lineNumber: 92,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                className: "text-base font-bold text-white",
+                                className: "font-bold text-white text-base",
                                 children: "Сигнали"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                lineNumber: 64,
+                                lineNumber: 93,
                                 columnNumber: 11
                             }, this),
-                            unreadCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                className: "bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full animate-pulse",
-                                children: unreadCount
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                className: "bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold",
+                                children: alerts.length
                             }, void 0, false, {
                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                lineNumber: 66,
-                                columnNumber: 13
+                                lineNumber: 94,
+                                columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                        lineNumber: 62,
+                        lineNumber: 91,
                         columnNumber: 9
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                        onClick: fetchAlerts,
-                        className: "text-xs text-slate-500 hover:text-slate-300 transition-colors",
-                        children: "↻ Обнови"
-                    }, void 0, false, {
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex items-center gap-2",
+                        children: [
+                            alerts.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                onClick: handleClearAll,
+                                className: "text-xs text-gray-400 hover:text-red-400 transition-colors px-2 py-1 bg-gray-800/60 hover:bg-red-500/10 rounded border border-gray-700/50",
+                                title: "Изчисти всички известия",
+                                children: "🗑️ Изчисти"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/AlertsPanel.tsx",
+                                lineNumber: 100,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                onClick: fetchAlerts,
+                                className: "text-xs text-gray-400 hover:text-white transition-colors",
+                                children: "🔄 Обнови"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/AlertsPanel.tsx",
+                                lineNumber: 108,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                        lineNumber: 71,
+                        lineNumber: 98,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                lineNumber: 61,
+                lineNumber: 90,
                 columnNumber: 7
             }, this),
-            loading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "text-center py-8 text-slate-500 text-sm",
-                children: "Зареждане..."
-            }, void 0, false, {
-                fileName: "[project]/src/components/AlertsPanel.tsx",
-                lineNumber: 80,
-                columnNumber: 9
-            }, this),
-            !loading && alerts.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "text-center py-8",
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "text-3xl mb-2",
-                        children: "📭"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/AlertsPanel.tsx",
-                        lineNumber: 85,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "text-slate-500 text-sm",
-                        children: "Няма сигнали"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/AlertsPanel.tsx",
-                        lineNumber: 86,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "text-slate-600 text-xs mt-1",
-                        children: "Стартирай скан за генериране на сигнали"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/AlertsPanel.tsx",
-                        lineNumber: 87,
-                        columnNumber: 11
-                    }, this)
-                ]
-            }, void 0, true, {
-                fileName: "[project]/src/components/AlertsPanel.tsx",
-                lineNumber: 84,
-                columnNumber: 9
-            }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "space-y-2 max-h-[600px] overflow-y-auto",
-                children: alerts.map((alert)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: `rounded-lg p-3 transition-all ${alert.isRead ? "bg-slate-900/40 border border-slate-800/50 opacity-60" : "bg-red-500/8 border border-red-500/30"}`,
+                className: "flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar",
+                children: loading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "text-center text-gray-500 py-8 text-sm",
+                    children: "Зареждане..."
+                }, void 0, false, {
+                    fileName: "[project]/src/components/AlertsPanel.tsx",
+                    lineNumber: 119,
+                    columnNumber: 11
+                }, this) : alerts.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "text-center text-gray-500 py-8 text-sm",
+                    children: "Няма активни сигнали"
+                }, void 0, false, {
+                    fileName: "[project]/src/components/AlertsPanel.tsx",
+                    lineNumber: 121,
+                    columnNumber: 11
+                }, this) : alerts.map((alert)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "bg-[#1a2130] rounded-lg p-3 border border-gray-800/80 hover:border-gray-700 transition-all",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "flex items-start justify-between mb-2",
+                                className: "flex items-center justify-between mb-1.5",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "flex items-center gap-2",
                                         children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "flex items-center gap-2",
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                        className: "font-bold text-white text-sm",
-                                                        children: [
-                                                            alert.symbol.replace("USDT", ""),
-                                                            "/USDT"
-                                                        ]
-                                                    }, void 0, true, {
-                                                        fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                        lineNumber: 104,
-                                                        columnNumber: 19
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ConvictionBadge$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
-                                                        conviction: alert.conviction,
-                                                        size: "sm"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                        lineNumber: 107,
-                                                        columnNumber: 19
-                                                    }, this)
-                                                ]
-                                            }, void 0, true, {
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "font-bold text-white text-sm",
+                                                children: alert.symbol
+                                            }, void 0, false, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 103,
-                                                columnNumber: 17
+                                                lineNumber: 132,
+                                                columnNumber: 19
                                             }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "text-xs text-slate-500 mt-0.5",
-                                                children: [
-                                                    "Score: ",
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                        className: "text-slate-300 font-semibold",
-                                                        children: alert.score.toFixed(1)
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                        lineNumber: 110,
-                                                        columnNumber: 26
-                                                    }, this),
-                                                    " · ",
-                                                    new Date(alert.createdAt).toLocaleTimeString("bg-BG")
-                                                ]
-                                            }, void 0, true, {
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ConvictionBadge$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                                                conviction: alert.conviction
+                                            }, void 0, false, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 109,
-                                                columnNumber: 17
+                                                lineNumber: 133,
+                                                columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                                        lineNumber: 102,
-                                        columnNumber: 15
+                                        lineNumber: 131,
+                                        columnNumber: 17
                                     }, this),
-                                    !alert.isRead && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                        onClick: ()=>markRead(alert.id),
-                                        className: "text-xs text-slate-500 hover:text-slate-300 transition-colors",
-                                        children: "✓"
-                                    }, void 0, false, {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        className: "text-[11px] text-gray-400 font-mono",
+                                        children: [
+                                            "Score: ",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "text-yellow-400 font-bold",
+                                                children: alert.score
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/components/AlertsPanel.tsx",
+                                                lineNumber: 136,
+                                                columnNumber: 26
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
                                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                                        lineNumber: 116,
+                                        lineNumber: 135,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                lineNumber: 101,
-                                columnNumber: 13
+                                lineNumber: 130,
+                                columnNumber: 15
                             }, this),
-                            alert.entryPrice && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "grid grid-cols-3 gap-1 text-center mb-2",
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "text-[11px] text-gray-400 mb-2 font-mono",
+                                children: [
+                                    "📅 ",
+                                    formatDate(alert.createdAt)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/components/AlertsPanel.tsx",
+                                lineNumber: 140,
+                                columnNumber: 15
+                            }, this),
+                            alert.entryPrice && alert.stopLoss && alert.takeProfit && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "grid grid-cols-3 gap-1 bg-[#121722] p-2 rounded text-center mb-2 font-mono text-[11px]",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "bg-blue-500/10 rounded px-1 py-1",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "text-[9px] text-slate-500",
+                                                className: "text-gray-500 text-[9px]",
                                                 children: "Вход"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 129,
-                                                columnNumber: 19
+                                                lineNumber: 147,
+                                                columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "text-[10px] font-bold text-blue-400",
+                                                className: "text-blue-400 font-semibold",
                                                 children: [
                                                     "$",
                                                     fmtPrice(alert.entryPrice)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 130,
-                                                columnNumber: 19
+                                                lineNumber: 148,
+                                                columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                                        lineNumber: 128,
-                                        columnNumber: 17
+                                        lineNumber: 146,
+                                        columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "bg-red-500/10 rounded px-1 py-1",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "text-[9px] text-slate-500",
+                                                className: "text-gray-500 text-[9px]",
                                                 children: "Stop"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 135,
-                                                columnNumber: 19
+                                                lineNumber: 151,
+                                                columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "text-[10px] font-bold text-red-400",
+                                                className: "text-red-400 font-semibold",
                                                 children: [
                                                     "$",
-                                                    alert.stopLoss ? fmtPrice(alert.stopLoss) : "—"
+                                                    fmtPrice(alert.stopLoss)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 136,
-                                                columnNumber: 19
+                                                lineNumber: 152,
+                                                columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                                        lineNumber: 134,
-                                        columnNumber: 17
+                                        lineNumber: 150,
+                                        columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "bg-green-500/10 rounded px-1 py-1",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "text-[9px] text-slate-500",
+                                                className: "text-gray-500 text-[9px]",
                                                 children: "TP"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 141,
-                                                columnNumber: 19
+                                                lineNumber: 155,
+                                                columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "text-[10px] font-bold text-green-400",
+                                                className: "text-green-400 font-semibold",
                                                 children: [
                                                     "$",
-                                                    alert.takeProfit ? fmtPrice(alert.takeProfit) : "—"
+                                                    fmtPrice(alert.takeProfit)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 142,
-                                                columnNumber: 19
+                                                lineNumber: 156,
+                                                columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                                        lineNumber: 140,
-                                        columnNumber: 17
+                                        lineNumber: 154,
+                                        columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                lineNumber: 127,
-                                columnNumber: 15
+                                lineNumber: 145,
+                                columnNumber: 17
                             }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-0.5",
-                                children: alert.signals.slice(0, 3).map((sig, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "text-[10px] text-slate-400 flex items-start gap-1",
+                            alert.signals && alert.signals.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "space-y-1",
+                                children: alert.signals.map((sig, idx)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "text-[11px] text-gray-300 flex items-start gap-1",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "text-red-400 mt-0.5",
+                                                className: "text-gray-500 text-[10px]",
                                                 children: "›"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 153,
-                                                columnNumber: 19
+                                                lineNumber: 165,
+                                                columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 children: sig
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                                lineNumber: 154,
-                                                columnNumber: 19
+                                                lineNumber: 166,
+                                                columnNumber: 23
                                             }, this)
                                         ]
-                                    }, i, true, {
+                                    }, idx, true, {
                                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                                        lineNumber: 152,
-                                        columnNumber: 17
+                                        lineNumber: 164,
+                                        columnNumber: 21
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                                lineNumber: 150,
-                                columnNumber: 13
+                                lineNumber: 162,
+                                columnNumber: 17
                             }, this)
                         ]
                     }, alert.id, true, {
                         fileName: "[project]/src/components/AlertsPanel.tsx",
-                        lineNumber: 93,
-                        columnNumber: 11
+                        lineNumber: 126,
+                        columnNumber: 13
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/src/components/AlertsPanel.tsx",
-                lineNumber: 91,
+                lineNumber: 117,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/AlertsPanel.tsx",
-        lineNumber: 60,
+        lineNumber: 89,
         columnNumber: 5
     }, this);
 }

@@ -31,3 +31,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Failed to update alert" }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  try {
+    await db.delete(alerts);
+    return NextResponse.json({ success: true, message: "All alerts cleared" });
+  } catch (err) {
+    console.error("Delete alerts error:", err);
+    return NextResponse.json({ error: "Failed to clear alerts" }, { status: 500 });
+  }
+}
