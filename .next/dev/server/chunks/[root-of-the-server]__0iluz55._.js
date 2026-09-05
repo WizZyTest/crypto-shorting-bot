@@ -389,12 +389,16 @@ function detectCVDDivergence(klines) {
     const recent = klines.slice(-20);
     const firstHalf = recent.slice(0, 10);
     const secondHalf = recent.slice(10);
-    const avgBuyVol1 = firstHalf.reduce((sum, k)=>sum + parseFloat(k.takerBuyBaseAssetVolume), 0) / firstHalf.length;
-    const avgBuyVol2 = secondHalf.reduce((sum, k)=>sum + parseFloat(k.takerBuyBaseAssetVolume), 0) / secondHalf.length;
+    const calcNetDeltaSum = (arr)=>arr.reduce((sum, k)=>{
+            const buyVol = parseFloat(k.takerBuyBaseAssetVolume);
+            const sellVol = Math.max(0, parseFloat(k.volume) - buyVol);
+            return sum + (buyVol - sellVol);
+        }, 0);
+    const delta1 = calcNetDeltaSum(firstHalf);
+    const delta2 = calcNetDeltaSum(secondHalf);
     const avgClose1 = firstHalf.reduce((sum, k)=>sum + parseFloat(k.close), 0) / firstHalf.length;
     const avgClose2 = secondHalf.reduce((sum, k)=>sum + parseFloat(k.close), 0) / secondHalf.length;
-    // Price going up but buy volume going down
-    return avgClose2 > avgClose1 && avgBuyVol2 < avgBuyVol1 * 0.85;
+    return avgClose2 > avgClose1 && delta2 < delta1;
 }
 function detectOISpike(oiHistory) {
     if (oiHistory.length < 3) return false;
@@ -428,7 +432,7 @@ function scoreResult(result) {
         score += 3;
         signals.push("Liquidity Sweep: Пробив над равен връх + затваряне под него ⚡");
     }
-    if (result.fundingRate > 0.0003) {
+    if (result.fundingRate > 0.0005) {
         score += 2;
         signals.push(`Funding Rate: +${(result.fundingRate * 100).toFixed(3)}% (Скъп Long)`);
     }
@@ -449,7 +453,7 @@ function scoreResult(result) {
     }
     // 2. Technical Structure Confirmations
     if (result.marketStructureBreak) {
-        score += 1.5;
+        score += 2;
         signals.push("MSB: Пробив на 15m/1h Higher Low подкрепа 🔻");
     }
     if (result.rsiDivergence) {
@@ -512,7 +516,7 @@ async function runScan(topN = 100) {
         fundingMap.set(p.symbol, parseFloat(p.lastFundingRate));
     }
     const results = [];
-    const BATCH_SIZE = 20;
+    const BATCH_SIZE = 8;
     for(let i = 0; i < topTickers.length; i += BATCH_SIZE){
         const batch = topTickers.slice(i, i + BATCH_SIZE);
         const batchResults = await Promise.all(batch.map(async (ticker)=>{

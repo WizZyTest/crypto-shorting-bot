@@ -39,18 +39,22 @@ export function calculateRSI(closes: number[], period = 14): number[] {
  * Price makes new high but RSI makes lower high
  */
 export function detectBearishDivergence(klines: Kline[]): boolean {
-  if (klines.length < 30) return false;
+  if (klines.length < 35) return false;
+  
   const closes = klines.map((k) => parseFloat(k.close));
-  const highs = klines.map((k) => parseFloat(k.high));
   const rsi = calculateRSI(closes, 14);
 
-  if (rsi.length < 10) return false;
+  if (rsi.length < 15) return false;
+
+  // ПОДРАВНЯВАНЕ: Вземаме само онези klines, за които имаме пресметнат RSI
+  const offset = klines.length - rsi.length;
+  const alignedHighs = klines.slice(offset).map((k) => parseFloat(k.high));
 
   const lookback = Math.min(30, rsi.length);
   const recentRSI = rsi.slice(-lookback);
-  const recentHighs = highs.slice(-lookback);
+  const recentHighs = alignedHighs.slice(-lookback);
 
-  // Find two swing highs
+  // Намиране на Swing Highs
   const swingHighs: Array<{ idx: number; price: number; rsi: number }> = [];
 
   for (let i = 2; i < recentHighs.length - 2; i++) {
@@ -73,7 +77,7 @@ export function detectBearishDivergence(klines: Kline[]): boolean {
   const last = swingHighs[swingHighs.length - 1];
   const prev = swingHighs[swingHighs.length - 2];
 
-  // Price higher high but RSI lower high = bearish divergence
+  // Цената прави по-висок връх, но RSI прави по-нисък връх = Bearish Divergence
   return last.price > prev.price && last.rsi < prev.rsi;
 }
 
@@ -87,7 +91,6 @@ export function detectLiquiditySweep(klines: Kline[]): boolean {
   const lastCandle = recent[recent.length - 1];
   const prevCandles = recent.slice(0, -3);
 
-  // Find recent equal highs / resistance
   const prevHighs = prevCandles.map((k) => parseFloat(k.high));
   const maxPrevHigh = Math.max(...prevHighs);
 
@@ -95,13 +98,10 @@ export function detectLiquiditySweep(klines: Kline[]): boolean {
   const lastClose = parseFloat(lastCandle.close);
   const lastOpen = parseFloat(lastCandle.open);
 
-  // Price swept above resistance but closed back below it
-  if (lastHigh > maxPrevHigh && lastClose < maxPrevHigh) {
-    // Bearish close (close below open)
-    if (lastClose < lastOpen) return true;
+  if (lastHigh > maxPrevHigh && lastClose < maxPrevHigh && lastClose < lastOpen) {
+    return true;
   }
 
-  // Also check last 2 candles for sweep pattern
   const prevLast = recent[recent.length - 2];
   if (prevLast) {
     const prevLastHigh = parseFloat(prevLast.high);
@@ -131,7 +131,6 @@ export function detectMarketStructureBreak(klines: Kline[]): boolean {
   const lows = recent.map((k) => parseFloat(k.low));
   const closes = recent.map((k) => parseFloat(k.close));
 
-  // Find swing lows (Higher Lows)
   const swingLows: number[] = [];
   for (let i = 2; i < lows.length - 2; i++) {
     if (
@@ -146,20 +145,17 @@ export function detectMarketStructureBreak(klines: Kline[]): boolean {
 
   if (swingLows.length < 2) return false;
 
-  // Check if swing lows were forming higher lows
   const lastHL = swingLows[swingLows.length - 1];
   const prevHL = swingLows[swingLows.length - 2];
-  const isHigherLow = lastHL > prevHL;
 
-  if (!isHigherLow) return false;
+  if (lastHL <= prevHL) return false;
 
-  // Check if current price has broken below last Higher Low
   const currentClose = closes[closes.length - 1];
   return currentClose < lastHL;
 }
 
 /**
- * Detect CVD divergence: price makes new high but buy volume decreasing
+ * Detect CVD divergence: price makes new high but Net Volume Delta (Buy - Sell) is decreasing
  */
 export function detectCVDDivergence(klines: Kline[]): boolean {
   if (klines.length < 20) return false;
@@ -168,24 +164,27 @@ export function detectCVDDivergence(klines: Kline[]): boolean {
   const firstHalf = recent.slice(0, 10);
   const secondHalf = recent.slice(10);
 
-  const avgBuyVol1 =
-    firstHalf.reduce((sum, k) => sum + parseFloat(k.takerBuyBaseAssetVolume), 0) /
-    firstHalf.length;
-  const avgBuyVol2 =
-    secondHalf.reduce((sum, k) => sum + parseFloat(k.takerBuyBaseAssetVolume), 0) /
-    secondHalf.length;
+  const calcNetDeltaSum = (arr: Kline[]) =>
+    arr.reduce((sum, k) => {
+      const totalVol = parseFloat(k.volume);
+      const buyVol = parseFloat(k.takerBuyBaseAssetVolume);
+      const sellVol = Math.max(0, totalVol - buyVol);
+      return sum + (buyVol - sellVol);
+    }, 0);
+
+  const delta1 = calcNetDeltaSum(firstHalf);
+  const delta2 = calcNetDeltaSum(secondHalf);
 
   const avgClose1 =
     firstHalf.reduce((sum, k) => sum + parseFloat(k.close), 0) / firstHalf.length;
   const avgClose2 =
     secondHalf.reduce((sum, k) => sum + parseFloat(k.close), 0) / secondHalf.length;
 
-  // Price going up but buy volume going down
-  return avgClose2 > avgClose1 && avgBuyVol2 < avgBuyVol1 * 0.85;
+  return avgClose2 > avgClose1 && delta2 < delta1;
 }
 
 /**
- * Detect OI spike with price stall: OI increased significantly but price didn't follow
+ * Detect OI spike with price stall: OI increased significantly
  */
 export function detectOISpike(
   oiHistory: Array<{ sumOpenInterest: string; timestamp: number }>
@@ -202,6 +201,5 @@ export function detectOISpike(
   const recentGrowth = (latest - prev) / prev;
   const prevGrowth = (prev - older) / older;
 
-  // OI jumped a lot in last period
   return recentGrowth > 0.03 || (recentGrowth > 0.015 && prevGrowth > 0.01);
 }

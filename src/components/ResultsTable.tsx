@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import ConvictionBadge from "./ConvictionBadge";
-import ScoreBar from "./ScoreBar";
+import { useState, Fragment } from "react";
 
 interface ScanResult {
   id: number;
@@ -39,12 +37,6 @@ function fmtPrice(n: number) {
   return n.toFixed(5);
 }
 
-function fmtVol(n: number) {
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(0)}M`;
-  return `$${(n / 1_000).toFixed(0)}K`;
-}
-
 export default function ResultsTable({ results, filter }: ResultsTableProps) {
   const [expanded, setExpanded] = useState<number | null>(null);
 
@@ -57,9 +49,8 @@ export default function ResultsTable({ results, filter }: ResultsTableProps) {
   if (filtered.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-4xl mb-3">🔍</div>
-        <div className="text-slate-400 font-medium">Няма резултати</div>
-        <div className="text-slate-600 text-sm mt-1">Стартирай скан за да видиш резултати</div>
+        <div className="text-3xl mb-2">🔍</div>
+        <div className="text-slate-400 font-medium">Няма намерени монети</div>
       </div>
     );
   }
@@ -80,128 +71,153 @@ export default function ResultsTable({ results, filter }: ResultsTableProps) {
           </tr>
         </thead>
         <tbody>
-          {filtered.map((r) => (
-            <>
-              <tr
-                key={r.id}
-                className={`border-b border-slate-800/50 table-row-hover cursor-pointer transition-colors ${expanded === r.id ? "bg-slate-800/30" : ""}`}
-                onClick={() => setExpanded(expanded === r.id ? null : r.id)}
-              >
-                <td className="py-3 pr-3">
-                  <div className="font-bold text-slate-200">
-                    {r.symbol.replace("USDT", "")}
-                    <span className="text-slate-600 font-normal">/USDT</span>
-                  </div>
-                  <div
-                    className={`text-[10px] ${r.priceChange24h >= 0 ? "text-green-400" : "text-red-400"}`}
+          {filtered.map((r, index) => {
+            const itemKey = r.id ?? index;
+            const isExpanded = expanded === itemKey;
+
+            return (
+              <Fragment key={itemKey}>
+                <tr
+                  className={`border-b border-slate-800/50 cursor-pointer transition-colors hover:bg-slate-800/50 ${
+                    isExpanded ? "bg-slate-800/30" : ""
+                  }`}
+                  onClick={() => setExpanded(isExpanded ? null : itemKey)}
+                >
+                  <td className="py-3 pr-3">
+                    <div className="font-bold text-slate-200">
+                      {r.symbol.replace("USDT", "")}
+                      <span className="text-slate-600 font-normal">/USDT</span>
+                    </div>
+                    <div
+                      className={`text-[10px] ${
+                        r.priceChange24h >= 0 ? "text-green-400" : "text-red-400"
+                      }`}
+                    >
+                      {r.priceChange24h >= 0 ? "+" : ""}
+                      {r.priceChange24h.toFixed(2)}%
+                    </div>
+                  </td>
+                  <td className="py-3 pr-3 text-right text-slate-200 font-mono">
+                    ${fmtPrice(r.price)}
+                  </td>
+                  <td className="py-3 pr-3 text-right">
+                    <div
+                      className={`text-sm font-bold ${
+                        r.score >= 7
+                          ? "text-red-400"
+                          : r.score >= 4
+                          ? "text-amber-400"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      {r.score.toFixed(0)}
+                    </div>
+                  </td>
+                  <td className="py-3 pr-3">
+                    <span
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                        r.conviction === "HIGH"
+                          ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                          : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                      }`}
+                    >
+                      {r.conviction}
+                    </span>
+                  </td>
+                  <td
+                    className={`py-3 pr-3 text-right font-medium ${
+                      r.fundingRate > 0.0005
+                        ? "text-red-400"
+                        : r.fundingRate > 0.0002
+                        ? "text-amber-400"
+                        : "text-slate-400"
+                    }`}
                   >
-                    {r.priceChange24h >= 0 ? "+" : ""}
-                    {r.priceChange24h.toFixed(2)}%
-                  </div>
-                </td>
-                <td className="py-3 pr-3 text-right text-slate-200 font-mono">
-                  ${fmtPrice(r.price)}
-                </td>
-                <td className="py-3 pr-3 text-right">
-                  <div
-                    className={`text-sm font-bold ${r.score >= 7 ? "text-red-400" : r.score >= 4 ? "text-amber-400" : "text-slate-400"}`}
+                    {(r.fundingRate * 100).toFixed(4)}%
+                  </td>
+                  <td
+                    className={`py-3 pr-3 text-right hidden md:table-cell ${
+                      r.openInterestChange > 10
+                        ? "text-red-400"
+                        : r.openInterestChange > 5
+                        ? "text-amber-400"
+                        : "text-slate-400"
+                    }`}
                   >
-                    {r.score.toFixed(0)}
-                  </div>
-                </td>
-                <td className="py-3 pr-3">
-                  <ConvictionBadge conviction={r.conviction} size="sm" />
-                </td>
-                <td
-                  className={`py-3 pr-3 text-right font-medium ${r.fundingRate > 0.003 ? "text-red-400" : r.fundingRate > 0.001 ? "text-amber-400" : "text-slate-400"}`}
-                >
-                  {(r.fundingRate * 100).toFixed(4)}%
-                </td>
-                <td
-                  className={`py-3 pr-3 text-right hidden md:table-cell ${r.openInterestChange > 10 ? "text-red-400" : r.openInterestChange > 5 ? "text-amber-400" : "text-slate-400"}`}
-                >
-                  {r.openInterestChange > 0 ? "+" : ""}
-                  {r.openInterestChange.toFixed(1)}%
-                </td>
-                <td
-                  className={`py-3 pr-3 text-right hidden lg:table-cell ${r.rsiValue && r.rsiValue > 70 ? "text-red-400" : r.rsiValue && r.rsiValue > 60 ? "text-amber-400" : "text-slate-400"}`}
-                >
-                  {r.rsiValue ? r.rsiValue.toFixed(1) : "—"}
-                </td>
-                <td className="py-3 text-center">
-                  <div className="flex items-center justify-center gap-0.5 flex-wrap">
-                    {r.liquiditySweep && (
-                      <span title="Liquidity Sweep" className="text-sm">⚡</span>
-                    )}
-                    {r.rsiDivergence && (
-                      <span title="RSI Divergence" className="text-sm">📉</span>
-                    )}
-                    {r.marketStructureBreak && (
-                      <span title="Market Structure Break" className="text-sm">🔻</span>
-                    )}
-                    {r.cvdDivergence && (
-                      <span title="CVD Divergence" className="text-sm">📊</span>
-                    )}
-                    {r.oiSpike && (
-                      <span title="OI Spike" className="text-sm">⚠️</span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-
-              {/* Expanded detail row */}
-              {expanded === r.id && (
-                <tr key={`${r.id}-expanded`} className="bg-slate-900/60">
-                  <td colSpan={8} className="px-4 py-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Score bar */}
-                      <div>
-                        <ScoreBar score={r.score} />
-                      </div>
-
-                      {/* Trade levels */}
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-blue-500/10 rounded-lg p-2">
-                          <div className="text-[10px] text-slate-500 uppercase">Вход</div>
-                          <div className="text-xs font-bold text-blue-400 mt-0.5">
-                            {r.entryPrice ? `$${fmtPrice(r.entryPrice)}` : "—"}
-                          </div>
-                        </div>
-                        <div className="bg-red-500/10 rounded-lg p-2">
-                          <div className="text-[10px] text-slate-500 uppercase">Stop</div>
-                          <div className="text-xs font-bold text-red-400 mt-0.5">
-                            {r.stopLoss ? `$${fmtPrice(r.stopLoss)}` : "—"}
-                          </div>
-                        </div>
-                        <div className="bg-green-500/10 rounded-lg p-2">
-                          <div className="text-[10px] text-slate-500 uppercase">TP</div>
-                          <div className="text-xs font-bold text-green-400 mt-0.5">
-                            {r.takeProfit ? `$${fmtPrice(r.takeProfit)}` : "—"}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Signals */}
-                      <div>
-                        <div className="text-[10px] text-slate-500 uppercase mb-1">Сигнали</div>
-                        <div className="space-y-0.5">
-                          {r.signals.map((sig, i) => (
-                            <div
-                              key={i}
-                              className="text-[10px] text-slate-300 flex items-start gap-1"
-                            >
-                              <span className="text-red-400">›</span>
-                              <span>{sig}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    {r.openInterestChange > 0 ? "+" : ""}
+                    {r.openInterestChange.toFixed(1)}%
+                  </td>
+                  <td
+                    className={`py-3 pr-3 text-right hidden lg:table-cell ${
+                      r.rsiValue && r.rsiValue > 70
+                        ? "text-red-400"
+                        : r.rsiValue && r.rsiValue > 60
+                        ? "text-amber-400"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {r.rsiValue ? r.rsiValue.toFixed(1) : "—"}
+                  </td>
+                  <td className="py-3 text-center">
+                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                      {r.liquiditySweep && <span title="Liquidity Sweep">⚡</span>}
+                      {r.rsiDivergence && <span title="RSI Bearish Div">📉</span>}
+                      {r.marketStructureBreak && <span title="MSB">🔻</span>}
+                      {r.cvdDivergence && <span title="CVD Div">📊</span>}
+                      {r.oiSpike && <span title="OI Spike">⚠️</span>}
+                      {r.fundingRate > 0.0005 && <span title="High Funding">🔥</span>}
                     </div>
                   </td>
                 </tr>
-              )}
-            </>
-          ))}
+
+                {isExpanded && (
+                  <tr className="bg-slate-900/80 border-b border-slate-800">
+                    <td colSpan={8} className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-xs font-semibold text-slate-400 mb-2">
+                            Открити Сигнали:
+                          </div>
+                          <ul className="space-y-1">
+                            {r.signals.map((sig, idx) => (
+                              <li key={idx} className="text-xs text-slate-300">
+                                {sig}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800">
+                          <div className="text-xs font-semibold text-slate-400 mb-2">
+                            Търговски Нива (ATR):
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                            <div className="bg-slate-900 p-2 rounded">
+                              <div className="text-slate-500">Entry</div>
+                              <div className="font-mono font-bold text-slate-200">
+                                ${fmtPrice(r.entryPrice ?? r.price)}
+                              </div>
+                            </div>
+                            <div className="bg-red-500/10 p-2 rounded border border-red-500/20">
+                              <div className="text-red-400">Stop Loss</div>
+                              <div className="font-mono font-bold text-red-400">
+                                ${fmtPrice(r.stopLoss ?? 0)}
+                              </div>
+                            </div>
+                            <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
+                              <div className="text-green-400">Take Profit</div>
+                              <div className="font-mono font-bold text-green-400">
+                                ${fmtPrice(r.takeProfit ?? 0)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>

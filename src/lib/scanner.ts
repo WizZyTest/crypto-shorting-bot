@@ -49,7 +49,7 @@ function scoreResult(result: Omit<ScanResult, "score" | "conviction" | "signals"
     signals.push("Liquidity Sweep: Пробив над равен връх + затваряне под него ⚡");
   }
 
-  if (result.fundingRate > 0.0003) {
+  if (result.fundingRate > 0.0005) {
     score += 2;
     signals.push(`Funding Rate: +${(result.fundingRate * 100).toFixed(3)}% (Скъп Long)`);
   }
@@ -73,7 +73,7 @@ function scoreResult(result: Omit<ScanResult, "score" | "conviction" | "signals"
 
   // 2. Technical Structure Confirmations
   if (result.marketStructureBreak) {
-    score += 1.5;
+    score += 2;
     signals.push("MSB: Пробив на 15m/1h Higher Low подкрепа 🔻");
   }
 
@@ -154,7 +154,7 @@ export async function runScan(topN = 100): Promise<ScanResult[]> {
   }
 
   const results: ScanResult[] = [];
-  const BATCH_SIZE = 20;
+  const BATCH_SIZE = 8;
 
   for (let i = 0; i < topTickers.length; i += BATCH_SIZE) {
     const batch = topTickers.slice(i, i + BATCH_SIZE);

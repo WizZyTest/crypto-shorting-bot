@@ -1,6 +1,4 @@
 {
-  "/api/alerts/route": "app/api/alerts/route.js",
   "/api/scan/route": "app/api/scan/route.js",
-  "/api/ticker/route": "app/api/ticker/route.js",
   "/page": "app/page.js"
 }
