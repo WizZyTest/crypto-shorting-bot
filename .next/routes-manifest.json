@@ -66,6 +66,18 @@
       "namedRegex": "^/api/scan(?:/)?$"
     },
     {
+      "page": "/api/signals",
+      "regex": "^/api/signals(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/signals(?:/)?$"
+    },
+    {
+      "page": "/api/signals/evaluate",
+      "regex": "^/api/signals/evaluate(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/signals/evaluate(?:/)?$"
+    },
+    {
       "page": "/api/ticker",
       "regex": "^/api/ticker(?:/)?$",
       "routeKeys": {},

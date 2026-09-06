@@ -25,19 +25,29 @@ function saveSignals(signals: SignalRecord[]) {
 function calculateStats(signals: SignalRecord[]): WinRateStats {
   const totalSignals = signals.length;
   if (totalSignals === 0) {
-    return { winRate: 0, totalSignals: 0, wins: 0, losses: 0, avgPnl: 0 };
+    return {
+      winRate: 0,
+      totalSignals: 0,
+      wins: 0,
+      losses: 0,
+      pending: 0,
+      expired: 0,
+      avgPnl: 0,
+    };
   }
 
   const closedSignals = signals.filter((s) => s.status === 'WIN' || s.status === 'LOSS');
   const wins = closedSignals.filter((s) => s.status === 'WIN').length;
   const losses = closedSignals.filter((s) => s.status === 'LOSS').length;
+  const pending = signals.filter((s) => s.status === 'PENDING').length;
+  const expired = signals.filter((s) => s.status === 'EXPIRED').length;
 
   const winRate = closedSignals.length > 0 ? Number(((wins / closedSignals.length) * 100).toFixed(1)) : 0;
 
   const totalPnl = signals.reduce((acc, curr) => acc + (curr.pnlPercent || 0), 0);
   const avgPnl = Number((totalPnl / totalSignals).toFixed(2));
 
-  return { winRate, totalSignals, wins, losses, avgPnl };
+  return { winRate, totalSignals, wins, losses, pending, expired, avgPnl };
 }
 
 export async function GET() {
@@ -64,7 +74,7 @@ export async function POST(req: NextRequest) {
       score: Number(score),
       conviction: conviction || 'HIGH',
       status: 'PENDING',
-      createdAt: new Date().toISOString(),
+      timestamp: Date.now(),
       pnlPercent: 0,
     };
 
