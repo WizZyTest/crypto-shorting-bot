@@ -5,6 +5,7 @@ import ConvictionBadge from "./ConvictionBadge";
 interface ScanResult {
   id: number;
   symbol: string;
+  direction?: "LONG" | "SHORT";
   price: number;
   priceChange24h: number;
   volume24h: number;
@@ -13,9 +14,9 @@ interface ScanResult {
   rsiValue: number | null;
   rsiDivergence: boolean;
   liquiditySweep: boolean;
-  marketStructureBreak: boolean;
-  cvdDivergence: boolean;
-  oiSpike: boolean;
+  marketStructureBreak?: boolean;
+  cvdDivergence?: boolean;
+  oiSpike?: boolean;
   score: number;
   entryPrice: number | null;
   stopLoss: number | null;
@@ -36,7 +37,7 @@ function fmtPrice(n: number) {
 }
 
 export default function ScanCard({ result: r }: ScanCardProps) {
-  // Динамично калкулиране на Risk-to-Reward (R:R) ratio
+  const isLong = r.direction === "LONG";
   const entry = r.entryPrice ?? r.price;
   const stop = r.stopLoss ?? entry;
   const tp = r.takeProfit ?? entry;
@@ -50,25 +51,37 @@ export default function ScanCard({ result: r }: ScanCardProps) {
       <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
-          <div>
-            <span className="font-bold text-slate-100 text-lg">
+          <div className="flex items-center gap-1.5">
+            {/* Направление: LONG / SHORT бадж */}
+            <span
+              className={`text-[11px] font-black px-2 py-0.5 rounded border ${
+                isLong
+                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                  : "bg-red-500/20 text-red-400 border-red-500/40"
+              }`}
+            >
+              {isLong ? "▲ LONG" : "▼ SHORT"}
+            </span>
+            <span className="font-bold text-slate-100 text-base">
               {r.symbol.replace("USDT", "")}
             </span>
             <span className="text-xs text-slate-500 font-normal">/USDT</span>
-            <span
-              className={`ml-2 text-xs font-semibold ${
-                r.priceChange24h >= 0 ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {r.priceChange24h >= 0 ? "+" : ""}
-              {r.priceChange24h.toFixed(2)}%
-            </span>
           </div>
           <ConvictionBadge conviction={r.conviction} size="sm" />
         </div>
 
-        <div className="text-xl font-mono font-bold text-slate-200 mb-3">
-          ${fmtPrice(r.price)}
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xl font-mono font-bold text-slate-200">
+            ${fmtPrice(r.price)}
+          </div>
+          <span
+            className={`text-xs font-semibold ${
+              r.priceChange24h >= 0 ? "text-emerald-400" : "text-red-400"
+            }`}
+          >
+            {r.priceChange24h >= 0 ? "+" : ""}
+            {r.priceChange24h.toFixed(2)}%
+          </span>
         </div>
 
         {/* Score & Metrics */}
@@ -77,10 +90,10 @@ export default function ScanCard({ result: r }: ScanCardProps) {
             <div className="text-[10px] text-slate-500 uppercase">Funding</div>
             <div
               className={`text-xs font-mono font-bold ${
-                r.fundingRate > 0.0005
+                r.fundingRate < 0
+                  ? "text-emerald-400"
+                  : r.fundingRate > 0.0003
                   ? "text-red-400"
-                  : r.fundingRate > 0.0002
-                  ? "text-amber-400"
                   : "text-slate-300"
               }`}
             >
@@ -89,15 +102,7 @@ export default function ScanCard({ result: r }: ScanCardProps) {
           </div>
           <div>
             <div className="text-[10px] text-slate-500 uppercase">OI Δ</div>
-            <div
-              className={`text-xs font-mono font-bold ${
-                r.openInterestChange > 10
-                  ? "text-red-400"
-                  : r.openInterestChange > 5
-                  ? "text-amber-400"
-                  : "text-slate-300"
-              }`}
-            >
+            <div className="text-xs font-mono font-bold text-slate-300">
               {r.openInterestChange > 0 ? "+" : ""}
               {r.openInterestChange.toFixed(1)}%
             </div>
@@ -106,10 +111,10 @@ export default function ScanCard({ result: r }: ScanCardProps) {
             <div className="text-[10px] text-slate-500 uppercase">RSI 4h</div>
             <div
               className={`text-xs font-mono font-bold ${
-                r.rsiValue && r.rsiValue > 70
+                r.rsiValue && r.rsiValue <= 35
+                  ? "text-emerald-400"
+                  : r.rsiValue && r.rsiValue >= 65
                   ? "text-red-400"
-                  : r.rsiValue && r.rsiValue > 60
-                  ? "text-amber-400"
                   : "text-slate-300"
               }`}
             >
@@ -122,7 +127,7 @@ export default function ScanCard({ result: r }: ScanCardProps) {
         <div className="flex flex-wrap gap-1.5 mb-4">
           {r.liquiditySweep && (
             <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1">
-              ⚡ Liq. Sweep
+              🎯 HTF Sweep
             </span>
           )}
           {r.cvdDivergence && (
@@ -135,13 +140,8 @@ export default function ScanCard({ result: r }: ScanCardProps) {
               ⚠️ OI Spike
             </span>
           )}
-          {r.marketStructureBreak && (
-            <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1">
-              🔻 MSB
-            </span>
-          )}
           {r.rsiDivergence && (
-            <span className="bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1">
+            <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1">
               📉 RSI Div
             </span>
           )}
@@ -160,8 +160,8 @@ export default function ScanCard({ result: r }: ScanCardProps) {
             <div className="font-mono font-bold text-red-400">${fmtPrice(stop)}</div>
           </div>
           <div>
-            <div className="text-green-400 text-[9px] uppercase">TP</div>
-            <div className="font-mono font-bold text-green-400">${fmtPrice(tp)}</div>
+            <div className="text-emerald-400 text-[9px] uppercase">TP</div>
+            <div className="font-mono font-bold text-emerald-400">${fmtPrice(tp)}</div>
           </div>
         </div>
         <div className="text-[10px] text-slate-500 font-mono text-center">

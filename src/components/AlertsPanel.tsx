@@ -6,6 +6,7 @@ interface AlertItem {
   alertId?: string;
   id?: number;
   symbol: string;
+  direction?: "LONG" | "SHORT";
   conviction: string;
   score: number;
   price: number;
@@ -34,18 +35,18 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
 
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col h-full space-y-4">
-      {/* Заглавна част */}
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">🔔</span>
           <h3 className="font-bold text-slate-200 text-sm">Сигнали</h3>
-          <span className="bg-red-500/20 text-red-400 text-xs font-bold px-2 py-0.5 rounded-full border border-red-500/30">
+          <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
             {results ? results.length : 0}
           </span>
         </div>
       </div>
 
-      {/* Списък с известия */}
+      {/* Alerts list */}
       <div className="space-y-3 overflow-y-auto max-h-[720px] pr-1 custom-scrollbar">
         {!hasAlerts ? (
           <div className="text-center py-12 text-slate-500 text-xs">
@@ -54,13 +55,14 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
         ) : (
           displayedAlerts.map((alert, idx) => {
             const keyId = alert.alertId || `${alert.symbol}-${idx}`;
+            const isLong = alert.direction === "LONG";
 
             return (
               <div
                 key={keyId}
                 className="relative bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-2 hover:border-slate-700 transition-colors group"
               >
-                {/* Бутон за изтриване */}
+                {/* Delete button */}
                 {onDeleteAlert && alert.alertId && (
                   <button
                     onClick={() => onDeleteAlert(alert.alertId!)}
@@ -73,13 +75,22 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
 
                 <div className="flex items-center justify-between pr-6">
                   <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${
+                        isLong
+                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                          : "bg-red-500/20 text-red-400 border-red-500/40"
+                      }`}
+                    >
+                      {isLong ? "▲ LONG" : "▼ SHORT"}
+                    </span>
                     <span className="font-bold text-slate-100 text-sm">
                       {alert.symbol}
                     </span>
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                         alert.conviction === "HIGH"
-                          ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                           : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                       }`}
                     >
@@ -87,7 +98,7 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
                     </span>
                   </div>
                   <div className="text-xs font-bold text-slate-400">
-                    Score: <span className="text-red-400">{alert.score}</span>
+                    Score: <span className="text-emerald-400">{alert.score}</span>
                   </div>
                 </div>
 
@@ -95,7 +106,7 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
                   <span>🕒 {alert.scannedAt || new Date().toLocaleTimeString()}</span>
                 </div>
 
-                {/* Търговски нива */}
+                {/* Trade levels */}
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] bg-slate-900/80 p-2 rounded-lg font-mono">
                   <div>
                     <div className="text-slate-500 text-[9px]">Вход</div>
@@ -106,12 +117,12 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
                     <div className="text-red-400 font-bold">${fmtPrice(alert.stopLoss ?? 0)}</div>
                   </div>
                   <div>
-                    <div className="text-green-400 text-[9px]">TP</div>
-                    <div className="text-green-400 font-bold">${fmtPrice(alert.takeProfit ?? 0)}</div>
+                    <div className="text-emerald-400 text-[9px]">TP</div>
+                    <div className="text-emerald-400 font-bold">${fmtPrice(alert.takeProfit ?? 0)}</div>
                   </div>
                 </div>
 
-                {/* Сигнали */}
+                {/* Signals list */}
                 {alert.signals && alert.signals.length > 0 && (
                   <div className="space-y-1 pt-1">
                     {alert.signals.map((sig, sIdx) => (
