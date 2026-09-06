@@ -179,3 +179,29 @@ export async function getKlines(
     return [];
   }
 }
+
+export async function getLongShortRatio(symbol: string): Promise<number | null> {
+  try {
+    const res = await fetchWithTimeout(
+      `${FAPI_BASE}/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=5m&limit=1`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.length > 0 ? parseFloat(data[0].longShortRatio) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getTakerBuySellRatio(symbol: string): Promise<number | null> {
+  try {
+    const res = await fetchWithTimeout(
+      `${FAPI_BASE}/futures/data/takerlongshortRatio?symbol=${symbol}&period=5m&limit=1`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.length > 0 ? parseFloat(data[0].buySellRatio) : null;
+  } catch {
+    return null;
+  }
+}
