@@ -1,0 +1,74 @@
+[
+  {
+    "id": "1000000BOBUSDT-1788700464515",
+    "symbol": "1000000BOBUSDT",
+    "entryPrice": 0.02087,
+    "takeProfit": 0.0189917,
+    "stopLoss": 0.0214961,
+    "score": 7,
+    "conviction": "HIGH",
+    "status": "PENDING",
+    "createdAt": "2026-09-06T13:14:24.515Z",
+    "pnlPercent": 7.43
+  },
+  {
+    "id": "BULLAUSDT-1788700840928",
+    "symbol": "BULLAUSDT",
+    "entryPrice": 0.076318,
+    "takeProfit": 0.06944938,
+    "stopLoss": 0.07860754,
+    "score": 7,
+    "conviction": "HIGH",
+    "status": "PENDING",
+    "createdAt": "2026-09-06T13:20:40.928Z",
+    "pnlPercent": 0.43
+  },
+  {
+    "id": "AIAUSDT-1788701132470",
+    "symbol": "AIAUSDT",
+    "entryPrice": 0.08763,
+    "takeProfit": 0.0797433,
+    "stopLoss": 0.0902589,
+    "score": 10,
+    "conviction": "HIGH",
+    "status": "PENDING",
+    "createdAt": "2026-09-06T13:25:32.471Z",
+    "pnlPercent": 2.09
+  },
+  {
+    "id": "DOODUSDT-1788701132456",
+    "symbol": "DOODUSDT",
+    "entryPrice": 0.00168,
+    "takeProfit": 0.0015288,
+    "stopLoss": 0.0017304000000000002,
+    "score": 10,
+    "conviction": "HIGH",
+    "status": "PENDING",
+    "createdAt": "2026-09-06T13:25:32.456Z",
+    "pnlPercent": 0.95
+  },
+  {
+    "id": "XANUSDT-1788701132400",
+    "symbol": "XANUSDT",
+    "entryPrice": 0.017718,
+    "takeProfit": 0.016123380000000003,
+    "stopLoss": 0.01824954,
+    "score": 10,
+    "conviction": "HIGH",
+    "status": "PENDING",
+    "createdAt": "2026-09-06T13:25:32.400Z",
+    "pnlPercent": -0.99
+  },
+  {
+    "id": "NAORISUSDT-1788701132416",
+    "symbol": "NAORISUSDT",
+    "entryPrice": 0.03724,
+    "takeProfit": 0.033888400000000006,
+    "stopLoss": 0.0383572,
+    "score": 10,
+    "conviction": "HIGH",
+    "status": "PENDING",
+    "createdAt": "2026-09-06T13:25:32.417Z",
+    "pnlPercent": -0.59
+  }
+]
