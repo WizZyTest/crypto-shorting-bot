@@ -9,7 +9,7 @@
     "conviction": "HIGH",
     "status": "PENDING",
     "createdAt": "2026-09-06T13:14:24.515Z",
-    "pnlPercent": 6.66
+    "pnlPercent": 6.42
   },
   {
     "id": "BULLAUSDT-1788700840928",
@@ -21,7 +21,7 @@
     "conviction": "HIGH",
     "status": "PENDING",
     "createdAt": "2026-09-06T13:20:40.928Z",
-    "pnlPercent": -1.27
+    "pnlPercent": -0.92
   },
   {
     "id": "AIAUSDT-1788701132470",
@@ -33,7 +33,7 @@
     "conviction": "HIGH",
     "status": "PENDING",
     "createdAt": "2026-09-06T13:25:32.471Z",
-    "pnlPercent": 2.54
+    "pnlPercent": 3.42
   },
   {
     "id": "DOODUSDT-1788701132456",
@@ -45,7 +45,7 @@
     "conviction": "HIGH",
     "status": "PENDING",
     "createdAt": "2026-09-06T13:25:32.456Z",
-    "pnlPercent": -1.43
+    "pnlPercent": -1.79
   },
   {
     "id": "XANUSDT-1788701132400",
@@ -57,7 +57,7 @@
     "conviction": "HIGH",
     "status": "PENDING",
     "createdAt": "2026-09-06T13:25:32.400Z",
-    "pnlPercent": -0.46
+    "pnlPercent": -0.3
   },
   {
     "id": "NAORISUSDT-1788701132416",
@@ -67,8 +67,8 @@
     "stopLoss": 0.0383572,
     "score": 10,
     "conviction": "HIGH",
-    "status": "PENDING",
+    "status": "LOSS",
     "createdAt": "2026-09-06T13:25:32.417Z",
-    "pnlPercent": -1.72
+    "pnlPercent": -3
   }
 ]

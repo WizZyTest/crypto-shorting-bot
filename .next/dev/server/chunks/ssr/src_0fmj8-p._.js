@@ -1459,13 +1459,15 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 function WinRateDashboard() {
     const [stats, setStats] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [signals, setSignals] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [livePrices, setLivePrices] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])({});
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
     const [evaluating, setEvaluating] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     // Хелпър за чист изглед на цените без разтеглени float числа
     const formatPrice = (price)=>{
-        if (price === undefined || price === null) return '0';
+        if (price === undefined || price === null || isNaN(price)) return '0';
         return price < 1 ? price.toFixed(6) : price.toFixed(2);
     };
+    // 1. Дърпане на сигналите и статистиката
     const fetchData = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async ()=>{
         try {
             const res = await fetch('/api/signals');
@@ -1485,6 +1487,22 @@ function WinRateDashboard() {
             setLoading(false);
         }
     }, []);
+    // 2. Дърпане на живите цени от Binance Futures API
+    const fetchLivePrices = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (trackedSignals)=>{
+        if (!trackedSignals || trackedSignals.length === 0) return;
+        try {
+            const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/price');
+            if (!res.ok) return;
+            const tickers = await res.json();
+            const priceMap = {};
+            tickers.forEach((t)=>{
+                priceMap[t.symbol] = parseFloat(t.price);
+            });
+            setLivePrices(priceMap);
+        } catch (err) {
+            console.error('Failed to fetch live prices:', err);
+        }
+    }, []);
     const handleEvaluate = async ()=>{
         setEvaluating(true);
         try {
@@ -1502,20 +1520,33 @@ function WinRateDashboard() {
     };
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         fetchData();
-        // Автоматично преоценяване и синхронизация на всеки 60 секунди
-        const interval = setInterval(()=>{
+        // Синхронизация на сигналите на всеки 60 сек
+        const signalsInterval = setInterval(()=>{
             fetchData();
         }, 60000);
-        return ()=>clearInterval(interval);
+        return ()=>clearInterval(signalsInterval);
     }, [
         fetchData
+    ]);
+    // Жив таймер за цените на всеки 5 секунди
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        if (signals.length > 0) {
+            fetchLivePrices(signals);
+            const priceInterval = setInterval(()=>{
+                fetchLivePrices(signals);
+            }, 5000);
+            return ()=>clearInterval(priceInterval);
+        }
+    }, [
+        signals,
+        fetchLivePrices
     ]);
     if (loading) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "p-4 text-gray-400",
         children: "Loading Win-Rate metrics..."
     }, void 0, false, {
         fileName: "[project]/src/components/WinRateDashboard.tsx",
-        lineNumber: 58,
+        lineNumber: 93,
         columnNumber: 23
     }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1526,10 +1557,10 @@ function WinRateDashboard() {
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
                         className: "text-xl font-bold text-gray-100",
-                        children: "Performance & Win-Rate Tracker"
+                        children: "Performance & Win-Rate Tracker (v5.1.1)"
                     }, void 0, false, {
                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                        lineNumber: 64,
+                        lineNumber: 99,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1539,13 +1570,13 @@ function WinRateDashboard() {
                         children: evaluating ? 'Evaluating...' : 'Re-Evaluate Signals'
                     }, void 0, false, {
                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                        lineNumber: 65,
+                        lineNumber: 100,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                lineNumber: 63,
+                lineNumber: 98,
                 columnNumber: 7
             }, this),
             stats && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1559,7 +1590,7 @@ function WinRateDashboard() {
                                 children: "Win Rate"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 77,
+                                lineNumber: 112,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1570,13 +1601,13 @@ function WinRateDashboard() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 78,
+                                lineNumber: 113,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                        lineNumber: 76,
+                        lineNumber: 111,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1587,7 +1618,7 @@ function WinRateDashboard() {
                                 children: "Total Signals"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 81,
+                                lineNumber: 116,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1595,13 +1626,13 @@ function WinRateDashboard() {
                                 children: stats.totalSignals
                             }, void 0, false, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 82,
+                                lineNumber: 117,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                        lineNumber: 80,
+                        lineNumber: 115,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1612,7 +1643,7 @@ function WinRateDashboard() {
                                 children: "Wins / Losses"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 85,
+                                lineNumber: 120,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1623,7 +1654,7 @@ function WinRateDashboard() {
                                         children: stats.wins
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 87,
+                                        lineNumber: 122,
                                         columnNumber: 15
                                     }, this),
                                     " / ",
@@ -1632,19 +1663,19 @@ function WinRateDashboard() {
                                         children: stats.losses
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 87,
+                                        lineNumber: 122,
                                         columnNumber: 70
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 86,
+                                lineNumber: 121,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                        lineNumber: 84,
+                        lineNumber: 119,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1655,7 +1686,7 @@ function WinRateDashboard() {
                                 children: "Avg PnL"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 91,
+                                lineNumber: 126,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1666,19 +1697,19 @@ function WinRateDashboard() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 92,
+                                lineNumber: 127,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                        lineNumber: 90,
+                        lineNumber: 125,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                lineNumber: 75,
+                lineNumber: 110,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1695,7 +1726,7 @@ function WinRateDashboard() {
                                         children: "Symbol"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 104,
+                                        lineNumber: 139,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1703,7 +1734,15 @@ function WinRateDashboard() {
                                         children: "Entry"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 105,
+                                        lineNumber: 140,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                        className: "py-3 px-4",
+                                        children: "Current Price"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/WinRateDashboard.tsx",
+                                        lineNumber: 141,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1711,7 +1750,7 @@ function WinRateDashboard() {
                                         children: "TP / SL"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 106,
+                                        lineNumber: 142,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1719,7 +1758,7 @@ function WinRateDashboard() {
                                         children: "Score"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 107,
+                                        lineNumber: 143,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1727,7 +1766,7 @@ function WinRateDashboard() {
                                         children: "Status"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 108,
+                                        lineNumber: 144,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1735,37 +1774,40 @@ function WinRateDashboard() {
                                         children: "PnL"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                        lineNumber: 109,
+                                        lineNumber: 145,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 103,
+                                lineNumber: 138,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                            lineNumber: 102,
+                            lineNumber: 137,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
                             className: "divide-y divide-gray-800",
                             children: signals.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                    colSpan: 6,
+                                    colSpan: 7,
                                     className: "py-4 text-center text-gray-500",
                                     children: "No signals tracked yet."
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                    lineNumber: 115,
+                                    lineNumber: 151,
                                     columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                lineNumber: 114,
+                                lineNumber: 150,
                                 columnNumber: 15
-                            }, this) : signals.map((sig)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                            }, this) : signals.map((sig)=>{
+                                const currentPrice = livePrices[sig.symbol];
+                                const priceDiff = currentPrice && sig.entryPrice ? (currentPrice - sig.entryPrice) / sig.entryPrice * 100 : null;
+                                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                     className: "hover:bg-gray-800/30",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1773,8 +1815,8 @@ function WinRateDashboard() {
                                             children: sig.symbol
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                            lineNumber: 120,
-                                            columnNumber: 19
+                                            lineNumber: 162,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-3 px-4",
@@ -1784,8 +1826,55 @@ function WinRateDashboard() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                            lineNumber: 121,
-                                            columnNumber: 19
+                                            lineNumber: 163,
+                                            columnNumber: 21
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                            className: "py-3 px-4 font-mono font-bold",
+                                            children: currentPrice ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "flex items-center space-x-2",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "text-cyan-400",
+                                                        children: [
+                                                            "$",
+                                                            formatPrice(currentPrice)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/WinRateDashboard.tsx",
+                                                        lineNumber: 167,
+                                                        columnNumber: 27
+                                                    }, this),
+                                                    priceDiff !== null && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: `text-xs ${priceDiff <= 0 ? 'text-green-400' : 'text-red-400'}`,
+                                                        children: [
+                                                            "(",
+                                                            priceDiff <= 0 ? '' : '+',
+                                                            priceDiff.toFixed(2),
+                                                            "%)"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/WinRateDashboard.tsx",
+                                                        lineNumber: 169,
+                                                        columnNumber: 29
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/components/WinRateDashboard.tsx",
+                                                lineNumber: 166,
+                                                columnNumber: 25
+                                            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "text-gray-500 animate-pulse",
+                                                children: "Loading..."
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/components/WinRateDashboard.tsx",
+                                                lineNumber: 175,
+                                                columnNumber: 25
+                                            }, this)
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/WinRateDashboard.tsx",
+                                            lineNumber: 164,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-3 px-4 text-xs",
@@ -1798,8 +1887,8 @@ function WinRateDashboard() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                                    lineNumber: 123,
-                                                    columnNumber: 21
+                                                    lineNumber: 179,
+                                                    columnNumber: 23
                                                 }, this),
                                                 " / ",
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1810,22 +1899,22 @@ function WinRateDashboard() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                                    lineNumber: 123,
-                                                    columnNumber: 94
+                                                    lineNumber: 179,
+                                                    columnNumber: 96
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                            lineNumber: 122,
-                                            columnNumber: 19
+                                            lineNumber: 178,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-3 px-4 font-mono",
                                             children: sig.score
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                            lineNumber: 125,
-                                            columnNumber: 19
+                                            lineNumber: 181,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-3 px-4",
@@ -1834,13 +1923,13 @@ function WinRateDashboard() {
                                                 children: sig.status
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                                lineNumber: 127,
-                                                columnNumber: 21
+                                                lineNumber: 183,
+                                                columnNumber: 23
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                            lineNumber: 126,
-                                            columnNumber: 19
+                                            lineNumber: 182,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-3 px-4 font-bold",
@@ -1852,47 +1941,48 @@ function WinRateDashboard() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                                lineNumber: 141,
-                                                columnNumber: 23
+                                                lineNumber: 197,
+                                                columnNumber: 25
                                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: "text-gray-500",
                                                 children: "-"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                                lineNumber: 145,
-                                                columnNumber: 23
+                                                lineNumber: 201,
+                                                columnNumber: 25
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                            lineNumber: 139,
-                                            columnNumber: 19
+                                            lineNumber: 195,
+                                            columnNumber: 21
                                         }, this)
                                     ]
                                 }, sig.id, true, {
                                     fileName: "[project]/src/components/WinRateDashboard.tsx",
-                                    lineNumber: 119,
-                                    columnNumber: 17
-                                }, this))
+                                    lineNumber: 161,
+                                    columnNumber: 19
+                                }, this);
+                            })
                         }, void 0, false, {
                             fileName: "[project]/src/components/WinRateDashboard.tsx",
-                            lineNumber: 112,
+                            lineNumber: 148,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/WinRateDashboard.tsx",
-                    lineNumber: 101,
+                    lineNumber: 136,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/WinRateDashboard.tsx",
-                lineNumber: 100,
+                lineNumber: 135,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/WinRateDashboard.tsx",
-        lineNumber: 61,
+        lineNumber: 96,
         columnNumber: 5
     }, this);
 }
