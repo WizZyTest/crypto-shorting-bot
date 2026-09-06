@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 interface AlertItem {
   alertId?: string;
   id?: number;
@@ -26,7 +28,9 @@ function fmtPrice(n: number) {
 }
 
 export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps) {
+  const [showAll, setShowAll] = useState(false);
   const hasAlerts = results && results.length > 0;
+  const displayedAlerts = hasAlerts ? (showAll ? results : results.slice(0, 3)) : [];
 
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col h-full space-y-4">
@@ -48,7 +52,7 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
             Няма активни известия. Стартирай скан за нови сигнали.
           </div>
         ) : (
-          results.map((alert, idx) => {
+          displayedAlerts.map((alert, idx) => {
             const keyId = alert.alertId || `${alert.symbol}-${idx}`;
 
             return (
@@ -123,6 +127,19 @@ export default function AlertsPanel({ results, onDeleteAlert }: AlertsPanelProps
           })
         )}
       </div>
+
+      {hasAlerts && results.length > 3 && (
+        <div className="text-center pt-2 border-t border-slate-800/60">
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="w-full py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors border border-slate-700"
+          >
+            {showAll
+              ? "Скрий сигналите"
+              : `Покажи всички (${results.length - 3} още)`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
