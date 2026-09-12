@@ -1,8 +1,32 @@
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
-// Функция за изчисление на реален RSI (14)
+const scanFilePath = path.join(process.cwd(), "data", "last_scan.json");
+
+function getLastScanData() {
+  try {
+    if (!fs.existsSync(scanFilePath)) return null;
+    const fileData = fs.readFileSync(scanFilePath, "utf8").trim();
+    if (!fileData) return null;
+    return JSON.parse(fileData);
+  } catch {
+    return null;
+  }
+}
+
+function saveScanData(data: any) {
+  try {
+    const dir = path.dirname(scanFilePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(scanFilePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error("Грешка при запазване на скана във файл:", error);
+  }
+}
+
 function calculateRSI(prices: number[], period = 14): number {
   if (prices.length < period + 1) return 50;
 
@@ -34,135 +58,207 @@ function calculateRSI(prices: number[], period = 14): number {
   return Math.round((100 - 100 / (1 + rs)) * 10) / 10;
 }
 
-export async function GET() {
-  try {
-    // 1. Взимане на 24ч статистиките за всички фючърси
-    const tickerRes = await fetch("https://fapi.binance.com/fapi/v1/ticker/24hr", {
-      cache: "no-store",
+async function executeScan() {
+  const tickerRes = await fetch("https://fapi.binance.com/fapi/v1/ticker/24hr", {
+    cache: "no-store",
+  });
+  const tickers = await tickerRes.json();
+
+  if (!Array.isArray(tickers)) {
+    throw new Error("Невалиден отговор от Binance");
+  }
+
+  const usdtTickers = tickers.filter((t: any) => t.symbol.endsWith("USDT"));
+
+  // 1. Топ 20 най-растящи (за SHORT) и Топ 20 най-падащи (за LONG)
+  const topGainers = [...usdtTickers]
+    .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
+    .slice(0, 20);
+
+  const topLosers = [...usdtTickers]
+    .sort((a: any, b: any) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent))
+    .slice(0, 20);
+
+  const candidates = [...topGainers, ...topLosers];
+
+  // 2. Funding Rates Map
+  const premiumRes = await fetch("https://fapi.binance.com/fapi/v1/premiumIndex", {
+    cache: "no-store",
+  });
+  const premiumData = await premiumRes.json();
+  const fundingMap = new Map<string, number>();
+
+  if (Array.isArray(premiumData)) {
+    premiumData.forEach((p: any) => {
+      fundingMap.set(p.symbol, parseFloat(p.lastFundingRate));
     });
-    const tickers = await tickerRes.json();
+  }
 
-    if (!Array.isArray(tickers)) {
-      throw new Error("Невалиден отговор от Binance");
-    }
+  // 3. Анализ с HTF Macro Filter
+  const results = await Promise.all(
+    candidates.map(async (t: any, index: number) => {
+      const symbol = t.symbol;
+      const price = parseFloat(t.lastPrice);
+      const priceChange24h = parseFloat(t.priceChangePercent);
+      const volume24h = parseFloat(t.quoteVolume);
+      const fundingRate = fundingMap.get(symbol) || 0;
 
-    // Взимаме топ 35 монети с НАЙ-ГОЛЯМ 24ч РЪСТ (най-добрите за шорт)
-    const topGainers = tickers
-      .filter((t: any) => t.symbol.endsWith("USDT"))
-      .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
-      .slice(0, 35);
+      let rsiValue = 50;
+      let is4hSweep = false;
+      let openInterestChange = 0;
 
-    // 2. Взимане на Funding Rates
-    const premiumRes = await fetch("https://fapi.binance.com/fapi/v1/premiumIndex", {
-      cache: "no-store",
-    });
-    const premiumData = await premiumRes.json();
-    const fundingMap = new Map<string, number>();
+      try {
+        const klinesRes = await fetch(
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=4h&limit=30`,
+          { cache: "no-store" }
+        );
+        const klines = await klinesRes.json();
+        if (Array.isArray(klines) && klines.length >= 15) {
+          const closePrices = klines.map((k: any) => parseFloat(k[4]));
+          rsiValue = calculateRSI(closePrices);
 
-    if (Array.isArray(premiumData)) {
-      premiumData.forEach((p: any) => {
-        fundingMap.set(p.symbol, parseFloat(p.lastFundingRate));
-      });
-    }
+          // Проверка за HTF Sweep на 4H свещите
+          const recentHighs = klines.slice(-6, -1).map((k: any) => parseFloat(k[2]));
+          const recentLows = klines.slice(-6, -1).map((k: any) => parseFloat(k[3]));
+          const currentHigh = parseFloat(klines[klines.length - 1][2]);
+          const currentLow = parseFloat(klines[klines.length - 1][3]);
 
-    // 3. Паралелно извличане на реални 4h свещи (Klines) и Open Interest за всяка монета
-    const results = await Promise.all(
-      topGainers.map(async (t: any, index: number) => {
-        const symbol = t.symbol;
-        const price = parseFloat(t.lastPrice);
-        const priceChange24h = parseFloat(t.priceChangePercent);
-        const volume24h = parseFloat(t.quoteVolume);
-        const fundingRate = fundingMap.get(symbol) || 0;
+          const prevMaxHigh = Math.max(...recentHighs);
+          const prevMinLow = Math.min(...recentLows);
 
-        let rsiValue = 50;
-        let openInterestChange = 0;
-
-        try {
-          // Заявка за 4h свещи от Binance (за изчисление на реален RSI)
-          const klinesRes = await fetch(
-            `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=4h&limit=30`,
-            { cache: "no-store" }
-          );
-          const klines = await klinesRes.json();
-          if (Array.isArray(klines) && klines.length >= 15) {
-            const closePrices = klines.map((k: any) => parseFloat(k[4]));
-            rsiValue = calculateRSI(closePrices);
+          if (currentHigh > prevMaxHigh || currentLow < prevMinLow) {
+            is4hSweep = true;
           }
-
-          // Заявка за реален Open Interest
-          const oiRes = await fetch(
-            `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`,
-            { cache: "no-store" }
-          );
-          const oiData = await oiRes.json();
-          if (oiData && oiData.openInterest) {
-            // Процентна оценка на база обем/OI
-            openInterestChange = Math.round((parseFloat(oiData.openInterest) * price / volume24h) * 10) / 10;
-          }
-        } catch (e) {
-          // Резервен вариант при лимит от Binance API
         }
 
-        const isHighFunding = fundingRate > 0.0003; // > 0.03%
-        const isExtremePump = priceChange24h > 10;  // > 10%
-        const isOverbought = rsiValue >= 70;
+        const oiRes = await fetch(
+          `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`,
+          { cache: "no-store" }
+        );
+        const oiData = await oiRes.json();
+        if (oiData && oiData.openInterest) {
+          openInterestChange = Math.round(((parseFloat(oiData.openInterest) * price) / volume24h) * 10) / 10;
+        }
+      } catch {
+        // Прескачаме при грешка или API лимит
+      }
 
-        let score = 0;
-        const signals: string[] = [];
+      // Определяне на посоката (direction)
+      let direction: "LONG" | "SHORT" | null = null;
+      if (priceChange24h > 0 || rsiValue >= 60) {
+        direction = "SHORT";
+      } else if (priceChange24h < 0 || rsiValue <= 40) {
+        direction = "LONG";
+      }
 
-        if (isHighFunding) {
-          score += 3.5;
+      if (!direction) return null;
+
+      let score = 0;
+      const signals: string[] = [];
+
+      if (direction === "SHORT") {
+        if (rsiValue >= 65) {
+          score += 3.0;
+          signals.push(`📉 4H HTF RSI Свръхкупен: ${rsiValue}`);
+        }
+        if (priceChange24h > 8) {
+          score += 2.5;
+          signals.push(`🚀 24ч Помпа: +${priceChange24h.toFixed(2)}%`);
+        }
+        if (fundingRate > 0.0003) {
+          score += 2.0;
           signals.push(`🔥 Висок Funding: ${(fundingRate * 100).toFixed(4)}%`);
         }
-        if (isExtremePump) {
-          score += 3.5;
-          signals.push(`🚀 24ч Ръст: +${priceChange24h.toFixed(2)}%`);
+        if (is4hSweep) {
+          score += 2.5;
+          signals.push(`🎯 4H HTF Liquidity Sweep (High)`);
         }
-        if (isOverbought) {
+      } else {
+        if (rsiValue <= 35) {
           score += 3.0;
-          signals.push(`📉 RSI Свръхкупен (4h): ${rsiValue}`);
+          signals.push(`📈 4H HTF RSI Свръхпродаден: ${rsiValue}`);
         }
+        if (priceChange24h < -8) {
+          score += 2.5;
+          signals.push(`🩸 24ч Срив: ${priceChange24h.toFixed(2)}%`);
+        }
+        if (fundingRate < -0.0003) {
+          score += 2.0;
+          signals.push(`❄️ Отрицателен Funding: ${(fundingRate * 100).toFixed(4)}%`);
+        }
+        if (is4hSweep) {
+          score += 2.5;
+          signals.push(`🎯 4H HTF Liquidity Sweep (Low)`);
+        }
+      }
 
-        const conviction = score >= 7 ? "HIGH" : score >= 3.5 ? "MEDIUM" : "LOW";
+      // Отсяваме монети без критичен резултат
+      if (score < 4.0) return null;
 
-        // ATR нива (3% Stop Loss / 9% Take Profit)
-        const stopLoss = price * 1.03;
-        const takeProfit = price * 0.91;
+      const conviction = score >= 7.5 ? "HIGH" : "MEDIUM";
 
-        return {
-          id: index + 1,
-          symbol,
-          price,
-          priceChange24h,
-          volume24h,
-          fundingRate,
-          openInterestChange,
-          rsiValue,
-          rsiDivergence: rsiValue > 75,
-          liquiditySweep: isExtremePump,
-          cvdDivergence: isHighFunding,
-          oiSpike: openInterestChange > 10,
-          score,
-          entryPrice: price,
-          stopLoss,
-          takeProfit,
-          conviction,
-          signals,
-          scannedAt: new Date().toLocaleTimeString(),
-        };
-      })
+      const stopLoss = direction === "SHORT" ? price * 1.03 : price * 0.97;
+      const takeProfit = direction === "SHORT" ? price * 0.91 : price * 1.09;
+
+      return {
+        id: index + 1,
+        symbol,
+        direction,
+        price,
+        priceChange24h,
+        volume24h,
+        fundingRate,
+        openInterestChange,
+        rsiValue,
+        rsiDivergence: direction === "SHORT" ? rsiValue > 75 : rsiValue < 25,
+        liquiditySweep: is4hSweep,
+        score,
+        entryPrice: price,
+        stopLoss,
+        takeProfit,
+        conviction,
+        signals,
+        scannedAt: new Date().toLocaleTimeString(),
+      };
+    })
+  );
+
+  const filteredResults = results
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => b.score - a.score);
+
+  const responseData = {
+    success: true,
+    timestamp: new Date().toISOString(),
+    results: filteredResults,
+  };
+
+  saveScanData(responseData);
+  return responseData;
+}
+
+export async function GET() {
+  try {
+    const savedData = getLastScanData();
+    if (savedData) {
+      return NextResponse.json(savedData);
+    }
+
+    const newData = await executeScan();
+    return NextResponse.json(newData);
+  } catch (error: any) {
+    console.error("Грешка при зареждане на скана:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
     );
+  }
+}
 
-    // Сортиране по най-висок Score
-    const sortedResults = results
-      .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    return NextResponse.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      results: sortedResults,
-    });
+export async function POST() {
+  try {
+    const newData = await executeScan();
+    return NextResponse.json(newData);
   } catch (error: any) {
     console.error("Сканирането пропадна:", error);
     return NextResponse.json(

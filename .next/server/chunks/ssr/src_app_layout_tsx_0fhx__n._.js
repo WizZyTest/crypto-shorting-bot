@@ -1,3 +1,0 @@
-module.exports=[27572,a=>{"use strict";var b=a.i(7997);a.s(["default",0,function({children:a}){return(0,b.jsx)("html",{lang:"bg",children:(0,b.jsx)("body",{className:"bg-[#0a0e1a] text-slate-100 antialiased",children:a})})},"metadata",0,{title:"Crypto Short Scanner — High Conviction Shorts",description:"Automated scanner for identifying high-conviction short setups using OI, Funding Rate, RSI Divergence, Liquidity Sweep and MSB signals."}])},50645,a=>{a.n(a.i(27572))}];
-
-//# sourceMappingURL=src_app_layout_tsx_0fhx__n._.js.map
